@@ -1,0 +1,107 @@
+## 0. namespace
+## apiVersion: v1
+## kind: Namespace
+## metadata:
+##   name: swwwt-test
+##  labels:
+##    apps: web-based
+
+## ---
+
+## 1. apiVersion
+## - list API on http://localhost:8001/
+apiVersion: extensions/v1beta1 #? apps/v1
+
+## 2. kind
+kind: Deployment 
+
+## 3. metadata
+## - labels
+## - name
+## - namespace
+## - annotations
+metadata:
+  labels: #? intended for an object to object grouping and mapping using selectors
+    app: helloworld-manager
+    zgroup: grpcExample #?
+  name: helloworld-manager ## name of the deployment 
+  ## namespace: swwwt-test
+  
+## 4. spec: desired state 
+## - Replicas 
+## - Selector: metadata and spec
+spec:
+  replicas: 1 ## numbers of pods
+  selector: ## labels that match the pods for the deployments to manage
+    matchLabels:
+      app: helloworld-manager
+  template:
+    metadata:
+      labels:
+        app: helloworld-manager
+        zgroup: grpcExample #?
+    spec: ## container information a pod should have
+      containers:
+      - name: helloworld-manager ##
+        image: swwwt/k8s-grpc ##
+        command: ["python3"] ##
+        args: ["app/greeter_server.py"] ##
+        ports: ##
+        - containerPort: 50051
+          name:          grpc
+        livenessProbe: #?
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 30
+          failureThreshold: 10
+          periodSeconds: 10
+        readinessProbe: #?
+          tcpSocket:
+            port: 50051
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        ## resources:
+        ##  limits:
+        ##    memory: "2Gi"
+        ##    cpu: "1000m"
+        ##  requests: 
+        ##    memory: "1Gi"
+        ##    cpu: "500m"
+          
+---
+apiVersion: v1
+kind: Service ## -> deployment
+metadata:
+  labels:
+    app: helloworld-server
+    zgroup: grpcExample
+  name: helloworld-server
+  ## namespace: swwwt-test
+spec:
+  ports:
+  - port: 50051
+    protocol: TCP
+    targetPort: 50051
+    #? nodePort: 30500
+  selector: ## match the pods in our nginx deployment as the deployment and the pods have the same label
+    app: helloworld-manager
+  sessionAffinity: None #?
+  type: ClusterIP #?
+  
+  
+  
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: public-terminal
+    zgroup: grpcExample
+  name: terminal-87
+  ## namespace: swwwt-test
+spec:
+  containers:
+  - name: helloworld-client
+    image: swwwt/k8s-grpc
+    command: ["sleep"]
+    args: ["300000"]
